@@ -12,12 +12,15 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
 running = True
 
+
 def shutdown(signum, frame):
     global running
     running = False
 
+
 signal.signal(signal.SIGTERM, shutdown)
 signal.signal(signal.SIGINT, shutdown)
+
 
 def connect_redis():
     for _ in range(5):
@@ -31,7 +34,9 @@ def connect_redis():
             time.sleep(1)
     raise Exception("Redis connection failed")
 
+
 r = connect_redis()
+
 
 def process_job(job_id):
     try:
@@ -44,6 +49,7 @@ def process_job(job_id):
     except Exception as e:
         logger.error(f"Error processing job {job_id}: {e}")
         r.hset(f"job:{job_id}", "status", "failed")
+
 
 while running:
     job = r.brpop("job", timeout=5)
