@@ -31,10 +31,11 @@ jobs:
         run: pip install flake8
 
       - name: Lint API with flake8
-        run:  flake8 api/ --max-line-length=120 --exclude=__pycache__,venv,.venv,env
+        run: flake8 api/ --max-line-length=120 --exclude=__pycache__,venv,.venv,env
 
       - name: Lint Worker with flake8
-        run:  flake8 worker/ --max-line-length=120 --exclude=__pycache__,venv,.venv,env
+        run: flake8 worker/ --max-line-length=120 --exclude=__pycache__,venv,.venv,env
+
       # ── JavaScript linting (Frontend) ──────────────────────────
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
@@ -87,7 +88,7 @@ jobs:
         # httpx is required by FastAPI TestClient
         # fakeredis mocks Redis so no real Redis server is needed
         run: |
-          pip install pytest pytest-cov fakeredis httpx
+          pip install pytest pytest-cov fakeredis "httpx==0.27.2"
           pip install -r api/requirements.txt
 
       - name: Run unit tests with coverage
@@ -160,7 +161,8 @@ jobs:
 # ══════════════════════════════════════════════════════════════════
 # STAGE 4 — SECURITY SCAN
 # Pulls all 3 images from Docker Hub and scans with Trivy.
-# Pipeline FAILS on any CRITICAL severity finding.
+# DEBUG table scans run first (exit-code 0) to show what was found.
+# SARIF scans run second and FAIL on any CRITICAL finding.
 # All SARIF reports uploaded as a single artifact.
 # ══════════════════════════════════════════════════════════════════
   security-scan:
@@ -176,6 +178,40 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # ── DEBUG: show human-readable table first (does not fail) ─
+      # These three steps print a plain table of all CRITICAL CVEs
+      # found so you can read exactly which package is vulnerable.
+      # Remove these three debug steps once vulnerabilities are fixed.
+
+      - name: DEBUG — show frontend vulnerabilities as table
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-frontend:${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          scanners: vuln
+          exit-code: 0
+
+      - name: DEBUG — show API vulnerabilities as table
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-api:${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          scanners: vuln
+          exit-code: 0
+
+      - name: DEBUG — show worker vulnerabilities as table
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-worker:${{ github.sha }}
+          format: table
+          severity: CRITICAL
+          scanners: vuln
+          exit-code: 0
+
+      # ── SARIF scans: these DO fail on CRITICAL findings ────────
 
       # ── Scan frontend ──────────────────────────────────────────
       - name: Scan frontend image with Trivy
@@ -267,14 +303,13 @@ jobs:
         run: |
           echo "--- Submitting test job ---"
 
-          # POST to the API directly (port 8000) since the API
-          # returns job_id. Adjust if your frontend proxies /jobs.
+          # POST to the API directly (port 8000)
+          # API returns "job_id" not "id" — matches api/main.py
           RESPONSE=$(curl -sf -X POST http://localhost:8000/jobs \
             -H "Content-Type: application/json")
 
           echo "Server response: $RESPONSE"
 
-          # API returns "job_id" not "id" — matches api/main.py
           JOB_ID=$(echo "$RESPONSE" | python3 -c \
             "import sys, json; print(json.load(sys.stdin)['job_id'])")
 
