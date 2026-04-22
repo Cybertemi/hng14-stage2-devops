@@ -6,7 +6,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches: ["**"]
- 
+  pull_request:
 
 # ══════════════════════════════════════════════════════════════════
 # STAGE 1 — LINT
@@ -85,8 +85,10 @@ jobs:
           python-version: "3.11"
 
       - name: Install API dependencies and test tools
+        # httpx is required by FastAPI TestClient
+        # fakeredis mocks Redis so no real Redis server is needed
         run: |
-          pip install pytest pytest-cov fakeredis
+          pip install pytest pytest-cov fakeredis httpx
           pip install -r api/requirements.txt
 
       - name: Run unit tests with coverage
@@ -266,20 +268,22 @@ jobs:
         run: |
           echo "--- Submitting test job ---"
 
-          RESPONSE=$(curl -sf -X POST http://localhost:3000/jobs \
-            -H "Content-Type: application/json" \
-            -d '{"type": "test", "payload": "integration-test"}')
+          # POST to the API directly (port 8000) since the API
+          # returns job_id. Adjust if your frontend proxies /jobs.
+          RESPONSE=$(curl -sf -X POST http://localhost:8000/jobs \
+            -H "Content-Type: application/json")
 
           echo "Server response: $RESPONSE"
 
+          # API returns "job_id" not "id" — matches api/main.py
           JOB_ID=$(echo "$RESPONSE" | python3 -c \
-            "import sys, json; print(json.load(sys.stdin)['id'])")
+            "import sys, json; print(json.load(sys.stdin)['job_id'])")
 
           echo "Job ID: $JOB_ID"
           echo "--- Polling for completion (max 60s) ---"
 
           for i in $(seq 1 12); do
-            STATUS=$(curl -sf http://localhost:3000/jobs/$JOB_ID \
+            STATUS=$(curl -sf http://localhost:8000/jobs/$JOB_ID \
               | python3 -c \
               "import sys, json; print(json.load(sys.stdin)['status'])")
 

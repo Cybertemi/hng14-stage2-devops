@@ -14,13 +14,7 @@ def get_redis():
     for _ in range(5):
         try:
             return redis.Redis(
-
-                host=REDIS_HOST,
-                port=REDIS_PORT,
-                decode_responses=True)
-=======
                 host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-
         except Exception:
             time.sleep(1)
     raise Exception("Redis not available")
