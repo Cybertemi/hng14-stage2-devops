@@ -3,3 +3,10 @@ node_modules/
 venv/
 __pycache__/
 .pytest_cache/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+.env

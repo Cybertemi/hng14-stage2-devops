@@ -31,11 +31,10 @@ jobs:
         run: pip install flake8
 
       - name: Lint API with flake8
-        run: flake8 api/ --max-line-length=120 --exclude=__pycache__
+        run:  flake8 api/ --max-line-length=120 --exclude=__pycache__,venv,.venv,env
 
       - name: Lint Worker with flake8
-        run: flake8 worker/ --max-line-length=120 --exclude=__pycache__
-
+        run:  flake8 worker/ --max-line-length=120 --exclude=__pycache__,venv,.venv,env
       # ── JavaScript linting (Frontend) ──────────────────────────
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
