@@ -160,11 +160,9 @@ jobs:
 
 # ══════════════════════════════════════════════════════════════════
 # STAGE 4 — SECURITY SCAN
-# Pulls all 3 images from Docker Hub and scans with Trivy.
-# Pipeline FAILS on any CRITICAL severity finding.
-# All SARIF reports uploaded as a single artifact.
-# trivy-action pinned to 0.28.0 (stable — master has a known bug
-# where it exits with code 1 even when zero vulnerabilities found)
+# Installs Trivy directly (no action wrapper — avoids known bug
+# where trivy-action exits code 1 despite zero vulnerabilities).
+# Fails on CRITICAL findings. Uploads SARIF as artifact.
 # ══════════════════════════════════════════════════════════════════
   security-scan:
     name: Security Scan
@@ -180,43 +178,44 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # ── Scan frontend ──────────────────────────────────────────
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.70.0
+
       - name: Scan frontend image with Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-frontend:${{ github.sha }}
-          format: sarif
-          output: trivy-frontend.sarif
-          severity: CRITICAL
-          exit-code: 1
-          ignore-unfixed: true
-          scanners: vuln
+        run: |
+          trivy image \
+            --severity CRITICAL \
+            --scanners vuln \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-frontend.sarif \
+            --exit-code 1 \
+            ${{ secrets.DOCKER_USERNAME }}/hng14-frontend:${{ github.sha }}
 
-      # ── Scan API ───────────────────────────────────────────────
       - name: Scan API image with Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-api:${{ github.sha }}
-          format: sarif
-          output: trivy-api.sarif
-          severity: CRITICAL
-          exit-code: 1
-          ignore-unfixed: true
-          scanners: vuln
+        run: |
+          trivy image \
+            --severity CRITICAL \
+            --scanners vuln \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-api.sarif \
+            --exit-code 1 \
+            ${{ secrets.DOCKER_USERNAME }}/hng14-api:${{ github.sha }}
 
-      # ── Scan worker ────────────────────────────────────────────
       - name: Scan worker image with Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-worker:${{ github.sha }}
-          format: sarif
-          output: trivy-worker.sarif
-          severity: CRITICAL
-          exit-code: 1
-          ignore-unfixed: true
-          scanners: vuln
+        run: |
+          trivy image \
+            --severity CRITICAL \
+            --scanners vuln \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-worker.sarif \
+            --exit-code 1 \
+            ${{ secrets.DOCKER_USERNAME }}/hng14-worker:${{ github.sha }}
 
-      # ── Upload all SARIF reports ───────────────────────────────
       - name: Upload Trivy SARIF results
         uses: actions/upload-artifact@v4
         if: always()
@@ -227,6 +226,7 @@ jobs:
             trivy-api.sarif
             trivy-worker.sarif
           retention-days: 7
+        
 
 
 # ══════════════════════════════════════════════════════════════════
