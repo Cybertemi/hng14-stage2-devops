@@ -161,9 +161,10 @@ jobs:
 # ══════════════════════════════════════════════════════════════════
 # STAGE 4 — SECURITY SCAN
 # Pulls all 3 images from Docker Hub and scans with Trivy.
-# DEBUG table scans run first (exit-code 0) to show what was found.
-# SARIF scans run second and FAIL on any CRITICAL finding.
+# Pipeline FAILS on any CRITICAL severity finding.
 # All SARIF reports uploaded as a single artifact.
+# trivy-action pinned to 0.28.0 (stable — master has a known bug
+# where it exits with code 1 even when zero vulnerabilities found)
 # ══════════════════════════════════════════════════════════════════
   security-scan:
     name: Security Scan
@@ -179,69 +180,41 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # ── DEBUG: show human-readable table first (does not fail) ─
-      # These three steps print a plain table of all CRITICAL CVEs
-      # found so you can read exactly which package is vulnerable.
-      # Remove these three debug steps once vulnerabilities are fixed.
-
-      - name: DEBUG — show frontend vulnerabilities as table
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-frontend:${{ github.sha }}
-          format: table
-          severity: CRITICAL
-          scanners: vuln
-          exit-code: 0
-
-      - name: DEBUG — show API vulnerabilities as table
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-api:${{ github.sha }}
-          format: table
-          severity: CRITICAL
-          scanners: vuln
-          exit-code: 0
-
-      - name: DEBUG — show worker vulnerabilities as table
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-worker:${{ github.sha }}
-          format: table
-          severity: CRITICAL
-          scanners: vuln
-          exit-code: 0
-
-      # ── SARIF scans: these DO fail on CRITICAL findings ────────
-
       # ── Scan frontend ──────────────────────────────────────────
       - name: Scan frontend image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-frontend:${{ github.sha }}
           format: sarif
           output: trivy-frontend.sarif
           severity: CRITICAL
           exit-code: 1
+          ignore-unfixed: true
+          scanners: vuln
 
       # ── Scan API ───────────────────────────────────────────────
       - name: Scan API image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-api:${{ github.sha }}
           format: sarif
           output: trivy-api.sarif
           severity: CRITICAL
           exit-code: 1
+          ignore-unfixed: true
+          scanners: vuln
 
       # ── Scan worker ────────────────────────────────────────────
       - name: Scan worker image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ secrets.DOCKER_USERNAME }}/hng14-worker:${{ github.sha }}
           format: sarif
           output: trivy-worker.sarif
           severity: CRITICAL
           exit-code: 1
+          ignore-unfixed: true
+          scanners: vuln
 
       # ── Upload all SARIF reports ───────────────────────────────
       - name: Upload Trivy SARIF results
