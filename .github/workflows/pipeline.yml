@@ -392,7 +392,7 @@ jobs:
             echo "--- Rolling update: API ---"
 
             # FORCE CLEAN OLD CONTAINER FIRST
-
+            
             docker rm -f api-new 2>/dev/null || true
 
             docker run -d \
@@ -441,6 +441,8 @@ jobs:
             # ─────────────────────────────────────────
             echo "--- Updating frontend and worker ---"
             docker compose up --no-deps --pull always -d frontend worker
+
+            
 
             echo "============================================"
             echo "  Deploy complete for SHA: ${{ github.sha }}"
