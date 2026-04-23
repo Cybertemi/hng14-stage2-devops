@@ -440,9 +440,9 @@ jobs:
             # (simpler services, no rolling needed)
             # ─────────────────────────────────────────
             echo "--- Updating frontend and worker ---"
-            docker compose up --no-deps --pull always -d frontend worker
+            docker compose up -d frontend worker
 
-            
+
 
             echo "============================================"
             echo "  Deploy complete for SHA: ${{ github.sha }}"
