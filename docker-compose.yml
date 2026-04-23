@@ -19,6 +19,8 @@ services:
     build: ./api
     networks:
       - app-network
+    ports:
+    - "8000:8000"
     environment:
       REDIS_HOST: ${REDIS_HOST}
       REDIS_PORT: ${REDIS_PORT}
