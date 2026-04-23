@@ -260,24 +260,36 @@ jobs:
           echo "Stack started — waiting 30s for all services to become healthy..."
           sleep 30
 
+      - name: Show container logs and status
+        run: |
+          echo "=== CONTAINER STATUS ==="
+          docker compose ps
+          echo "=== FRONTEND LOGS ==="
+          docker compose logs frontend
+          echo "=== API LOGS ==="
+          docker compose logs api
+          echo "=== REDIS LOGS ==="
+          docker compose logs redis
+
       - name: Wait for frontend to be ready
         run: |
           echo "Checking frontend is responding..."
           for i in $(seq 1 12); do
             if curl -sf http://localhost:3000/health > /dev/null 2>&1; then
               echo "Frontend ready after attempt $i"
-              break
+              exit 0
             fi
             echo "Attempt $i: not ready yet, retrying in 5s..."
             sleep 5
           done
+          echo "FAILED — frontend never became ready"
+          docker compose logs frontend
+          exit 1
 
       - name: Submit a job and poll until completed
         run: |
           echo "--- Submitting test job ---"
 
-          # POST to the API directly (port 8000)
-          # API returns "job_id" not "id" — matches api/main.py
           RESPONSE=$(curl -sf -X POST http://localhost:8000/jobs \
             -H "Content-Type: application/json")
 
