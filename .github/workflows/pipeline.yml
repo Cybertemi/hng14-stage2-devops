@@ -391,6 +391,10 @@ jobs:
             # ─────────────────────────────────────────
             echo "--- Rolling update: API ---"
 
+            # FORCE CLEAN OLD CONTAINER FIRST
+            
+            docker rm -f api-new 2>/dev/null || true
+
             docker run -d \
               --name api-new \
               --network hng14-stage2-devops_app-network \
